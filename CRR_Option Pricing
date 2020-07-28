@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 28 09:15:26 2020
+
+@author: aayush
+"""
+
+"""
+Cox, Ross, & Rubinstein (CRR) method:
+    - binomial model, is an example of a multi-period market model
+   
+    - At each point in time, the stock price is assumed to either go ‘up’ by a
+    fixed factor u or go ‘down’ by a fixed factor d
+    
+    - The real-world probability of an ‘up’ movement is assumed to be the same
+    0 < p < 1 for each period and is assumed to be independent of all previous stock price movements
+    
+    - The CRR method ensures that the tree is recombinant, 
+    i.e. if the underlying asset moves up and then down (u,d), 
+    the price will be the same as if it had moved down and then up (d,u)—here the two paths merge or recombine. 
+    This property reduces the number of tree nodes, and thus accelerates the computation of the option price.
+    
+    - This property also allows that the value of the underlying asset at each node can be calculated directly via formula, 
+    and does not require that the tree be built first
+
+"""
+
+import math
+
+class BinomialOptionPricing:
+    def __init__(self, T, rf, n, sigma, S, X):
+        """
+        Parameters
+        ----------
+        T : expiration time
+        rf : risk free rate
+        n : height of binomial tree
+        sigma :volatility
+        S : stock price
+        X : strike price
+
+        """
+        self.T = T
+        self.rf = rf 
+        self.n = n
+        self.sigma = sigma 
+        self.S = S
+        self.X = X
+        t = T/n
+        
+        self.up_rate = math.e**(sigma*math.sqrt(T/n))               #calculate up rate
+        print("up rate",self.up_rate)
+        self.down_rate = 1/self.up_rate                             #calculate down rate
+        print("down rate", self.down_rate)
+        
+        self.discount_factor = math.e**(-rf*t)                      #calculate discount factor
+        print("discount factor",self.discount_factor)
+
+        self.up_probability = (math.e**(rf*T/n) - self.down_rate)/(self.up_rate-self.down_rate)         #calculate up probability
+        self.down_probability = 1 - self.up_probability                                                 #calculate down probability
+        print("up probability",self.up_probability)
+        print("down probability",self.down_probability)
+        
+    def __get_intrinsic_value_final_layer(self):
+        zero_layer = [1]
+        change_rate_final_layer = zero_layer
+        for level in range(1,self.n):                               #loop will run till its reach height of binomial tree
+
+            last_elem = change_rate_final_layer[-1]*self.down_rate  
+
+            change_rate_final_layer = [i*self.up_rate for i in change_rate_final_layer]
+
+            change_rate_final_layer.append(last_elem)               #No of Up ticks - No of down ticks
+
+        self.intrinsic_value_final_layer = [max(self.S*rate-self.X,0) for rate in change_rate_final_layer]      #Max [ (Sn − K), 0 ], for a call option
+
+        
+    def __get_init_intrinsic_value(self):
+        current_intrinsic_values = self.intrinsic_value_final_layer
+        while len(current_intrinsic_values)>1:
+            earlier_intrinsic_values = []
+
+            for i in range(1,len(current_intrinsic_values)):
+                up_intrinsic = current_intrinsic_values[i-1]
+                down_intrinsic = current_intrinsic_values[i]
+                expected_intrinsic_value = up_intrinsic*self.up_probability + down_intrinsic*self.down_probability
+                expected_intrinsic_value *= self.discount_factor
+                earlier_intrinsic_values.append(expected_intrinsic_value) 
+            current_intrinsic_values = earlier_intrinsic_values
+
+        self.init_intrinsic_value = current_intrinsic_values[0]
+        self.init_intrinsic_value2 = self.init_intrinsic_value - self.S +(self.X/math.pow(1+self.rf, self.T))
+        
+    def get_price(self):
+        self.__get_intrinsic_value_final_layer()
+        self.__get_init_intrinsic_value()
+        
+        return self.init_intrinsic_value, self.init_intrinsic_value2
+    
+
+model = BinomialOptionPricing(T=1/3, rf=0.02, n=40,sigma=0.1, S=221.2, X=222.5)
+print("(Call option price, Put Option Price)", model.get_price())
+
