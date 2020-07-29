@@ -39,28 +39,26 @@ class BsmModel:
     # cumulative probability distribution function of standard normal distribution
         return norm.cdf(d)
 
-    def dn(self, d):
-    # the first order derivative of n(d); i.e. probability density function
-        return norm.pdf(d)
-
     def d1(self):
     #calculation of d1
         d1 = (log(self.s / self.k) + (self.r - self.q + self.sigma ** 2 * 0.5) * self.T) / (self.sigma * sqrt(self.T))
         return d1
 
-    # def d2(self):
-    # #calculation of d2
-    #     d2 = (log(self.s / self.k) + (self.r - self.q - self.sigma ** 2 * 0.5) * self.T) / (self.sigma * sqrt(self.T))
-    #     return d2
-
+    """
+    def d2(self):
+    #calculation of d2
+        d2 = (log(self.s / self.k) + (self.r - self.q - self.sigma ** 2 * 0.5) * self.T) / (self.sigma * sqrt(self.T))
+        return d2
+    """
+    
     def bsm_price(self):
         d1 = self.d1()
-        d2 = d1 - self.sigma * sqrt(self.T)
+        d2 = d1 - self.sigma * sqrt(self.T)     #calculation of d2
         if self.type == 'c':
-            price = exp(-self.r*self.T) * (self.s * exp((self.r - self.q)*self.T) * self.n(d1) - self.k * self.n(d2))
+            price = (self.s * exp(-self.q * self.T) * self.n(d1)) - (self.k * exp(-self.r * self.T) * self.n(d2))
             return price
         elif self.type == 'p':
-            price = exp(-self.r*self.T) * (self.k * self.n(-d2) - (self.s * exp((self.r - self.q)*self.T) * self.n(-d1)))
+            price = (self.k * exp(-self.r * self.T) * self.n(-d2)) - (self.s * exp(-self.q * self.T) * self.n(-d1))
             return price
         else:
             print ("option type can only be c or p")
